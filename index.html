@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<!-- This is the FRONTEND: what the visitor sees. It has NO secret key in it. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ask the AI</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f4f5f7;
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+    }
+    .card {
+      background: white;
+      width: 100%;
+      max-width: 520px;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    h1 { margin-top: 0; font-size: 1.4rem; }
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 90px;
+      padding: 10px;
+      font-size: 1rem;
+      font-family: inherit;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      resize: vertical;
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px 16px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+    }
+    button:disabled { background: #93a5d6; cursor: wait; }
+    #answer {
+      margin-top: 16px;
+      padding: 12px;
+      background: #f8fafc;
+      border-radius: 8px;
+      white-space: pre-wrap; /* keep the AI's line breaks */
+      min-height: 24px;
+    }
+    #answer.error { background: #fef2f2; color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Ask the AI</h1>
+    <textarea id="question" placeholder="Type your question..."></textarea>
+    <button id="askBtn">Ask</button>
+    <div id="answer"></div>
+  </div>
+
+  <script>
+    const questionBox = document.getElementById("question");
+    const askBtn = document.getElementById("askBtn");
+    const answerBox = document.getElementById("answer");
+
+    async function ask() {
+      const question = questionBox.value.trim();
+      if (question === "") return;
+
+      // Show that we're waiting
+      askBtn.disabled = true;
+      askBtn.textContent = "Thinking...";
+      answerBox.className = "";
+      answerBox.textContent = "";
+
+      try {
+        // Send the question to OUR backend (api/chat.js), not to Google directly.
+        // The backend adds the secret key and talks to the AI for us.
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question: question }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) throw new Error(data.error || "Something went wrong");
+        answerBox.textContent = data.answer; // textContent = safe, never runs code
+      } catch (err) {
+        answerBox.className = "error";
+        answerBox.textContent = "Error: " + err.message;
+      } finally {
+        askBtn.disabled = false;
+        askBtn.textContent = "Ask";
+      }
+    }
+
+    askBtn.onclick = ask;
+    // Ctrl + Enter also sends the question
+    questionBox.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && e.ctrlKey) ask();
+    });
+  </script>
+</body>
+</html>
